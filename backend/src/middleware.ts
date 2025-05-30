@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 
 import { JWT_PASSWORD } from './config';
 
-export const userMiddlewre = (req:Request , res:Response , next:NextFunction) => {
+export const userMiddleware = (req:Request , res:Response , next:NextFunction) => {
     const header = req.headers["authorization"];
     const decoded = jwt.verify(header as string ,JWT_PASSWORD  )
     if(decoded){

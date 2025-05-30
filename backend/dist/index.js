@@ -17,9 +17,13 @@ const db_1 = require("./db");
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const config_1 = require("./config");
 const middleware_1 = require("./middleware");
+const utils_1 = require("./utils");
+const cors_1 = __importDefault(require("cors"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
+app.use((0, cors_1.default)());
 app.post('/api/v1/signup', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    console.log(req.body);
     const username = req.body.username;
     const password = req.body.password;
     try {
@@ -32,6 +36,7 @@ app.post('/api/v1/signup', (req, res) => __awaiter(void 0, void 0, void 0, funct
         });
     }
     catch (e) {
+        console.log(e);
         res.status(411).json({
             message: 'User already exists'
         });
@@ -58,7 +63,7 @@ app.post('/api/v1/signin', (req, res) => __awaiter(void 0, void 0, void 0, funct
         });
     }
 }));
-app.post('/api/v1/content', middleware_1.userMiddlewre, (req, res) => {
+app.post('/api/v1/content', middleware_1.userMiddleware, (req, res) => {
     const type = req.body.type; // 'question' or 'answer'
     const link = req.body.link;
     db_1.ContentModel.create({
@@ -72,7 +77,7 @@ app.post('/api/v1/content', middleware_1.userMiddlewre, (req, res) => {
         message: 'Conetnt added successfully'
     });
 });
-app.get('/api/v1/content', middleware_1.userMiddlewre, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get('/api/v1/content', middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     // @ts-ignore
     const userId = req.userId;
     const content = yield db_1.ContentModel.find({
@@ -82,7 +87,7 @@ app.get('/api/v1/content', middleware_1.userMiddlewre, (req, res) => __awaiter(v
         content
     });
 }));
-app.delete('/api/v1/content', middleware_1.userMiddlewre, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.delete('/api/v1/content', middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const contentId = req.body.contentId;
     yield db_1.ContentModel.deleteMany({
         contentId,
@@ -93,10 +98,64 @@ app.delete('/api/v1/content', middleware_1.userMiddlewre, (req, res) => __awaite
         message: 'Content deleted successfully'
     });
 }));
-app.post('/api/v1/share', (req, res) => {
-});
-app.get('/api/v1/signup', (req, res) => {
-});
+app.post('/api/v1/brain/share', middleware_1.userMiddleware, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const share = req.body.share;
+    if (share) {
+        const existingLink = yield db_1.LinkModel.findOne({
+            //@ts-ignore
+            userId: req.userId
+        });
+        if (existingLink) {
+            res.json({
+                hash: existingLink.hash,
+            });
+            return;
+        }
+        const hash = (0, utils_1.random)(10);
+        yield db_1.LinkModel.create({
+            //@ts-ignore
+            userId: req.userId,
+            //@ts-ignore
+            hash: hash
+        });
+        res.json({
+            message: '/share/' + hash
+        });
+    }
+    else {
+        yield db_1.LinkModel.deleteOne({
+            //@ts-ignore
+            userId: req.userId
+        });
+    }
+    res.json({
+        message: "Rreemoved link"
+    });
+}));
+app.get('/api/v1/brain/:shareLink', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const hash = req.params.shareLink;
+    const Link = yield db_1.LinkModel.findOne({
+        hash
+    });
+    if (!Link) {
+        res.status(411).json({
+            message: "Sorry Incorrect Input"
+        });
+        return;
+    }
+    const content = yield db_1.ContentModel.find({
+        //@ts-ignore
+        userId: Link.userId
+    });
+    const user = yield db_1.UserMdodel.findOne({
+        //@ts-ignore
+        _id: Link.userId
+    });
+    res.json({
+        username: user === null || user === void 0 ? void 0 : user.username,
+        content
+    });
+}));
 app.listen(3000, () => {
     console.log('Server is running on port 3000');
 });
